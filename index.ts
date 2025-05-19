@@ -120,6 +120,7 @@ import {
   GetRepositoryTreeSchema,
   type GitLabTreeItem,
   type GetRepositoryTreeOptions,
+  ListMergeRequestsSchema,
 } from "./schemas.js";
 
 /**
@@ -411,6 +412,11 @@ const allTools = [
     description:
       "Get the repository tree for a GitLab project (list files and directories)",
     inputSchema: zodToJsonSchema(GetRepositoryTreeSchema),
+  },
+  {
+    name: "list_merge_requests",
+    description: "List merge requests in a GitLab project with filtering options",
+    inputSchema: zodToJsonSchema(ListMergeRequestsSchema),
   },
 ];
 
@@ -1440,7 +1446,7 @@ async function getMergeRequest(
 
 /**
  * Get merge request changes/diffs
- * MR 변경사항 조회 함수 (Function to retrieve merge request changes)
+ * MR 変更사항 조회 함수 (Function to retrieve merge request changes)
  *
  * @param {string} projectId - The ID or URL-encoded path of the project
  * @param {number} mergeRequestIid - The internal ID of the merge request (Either mergeRequestIid or branchName must be provided)
@@ -1485,6 +1491,48 @@ async function getMergeRequestDiffs(
   await handleGitLabError(response);
   const data = (await response.json()) as { changes: unknown };
   return z.array(GitLabMergeRequestDiffSchema).parse(data.changes);
+}
+
+/**
+ * List merge requests in a GitLab project
+ * プロジェクトのマージリクエスト一覧を取得する
+ *
+ * @param {string} projectId - The ID or URL-encoded path of the project
+ * @param {z.infer<typeof ListMergeRequestsSchema>} options - Options for filtering merge requests
+ * @returns {Promise<GitLabMergeRequest[]>} Array of merge requests
+ */
+async function listMergeRequests(
+  projectId: string,
+  options: Omit<z.infer<typeof ListMergeRequestsSchema>, "project_id"> = {}
+): Promise<GitLabMergeRequest[]> {
+  projectId = decodeURIComponent(projectId); // Decode project ID
+  const url = new URL(
+    `${GITLAB_API_URL}/projects/${encodeURIComponent(projectId)}/merge_requests`
+  );
+
+  // Add query parameters from options
+  Object.entries(options).forEach(([key, value]) => {
+    if (value !== undefined) {
+      if (Array.isArray(value)) {
+        // Handle array parameters like labels
+        url.searchParams.append(key, value.join(","));
+      } else if (typeof value === "boolean") {
+        // Handle boolean parameters
+        url.searchParams.append(key, String(value));
+      } else {
+        // Handle other parameter types
+        url.searchParams.append(key, String(value));
+      }
+    }
+  });
+
+  const response = await fetch(url.toString(), {
+    ...DEFAULT_FETCH_CONFIG,
+  });
+
+  await handleGitLabError(response);
+  const data = await response.json();
+  return z.array(GitLabMergeRequestSchema).parse(data);
 }
 
 /**
@@ -2835,6 +2883,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const tree = await getRepositoryTree(args);
         return {
           content: [{ type: "text", text: JSON.stringify(tree, null, 2) }],
+        };
+      }
+
+      case "list_merge_requests": {
+        const args = ListMergeRequestsSchema.parse(request.params.arguments);
+        const { project_id, ...options } = args;
+        const mergeRequests = await listMergeRequests(String(project_id), options);
+        return {
+          content: [{ type: "text", text: JSON.stringify(mergeRequests, null, 2) }],
         };
       }
 

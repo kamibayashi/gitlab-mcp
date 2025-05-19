@@ -1092,3 +1092,42 @@ export type GetRepositoryTreeOptions = z.infer<typeof GetRepositoryTreeSchema>;
 export type MergeRequestThreadPosition = z.infer<typeof MergeRequestThreadPositionSchema>;
 export type CreateMergeRequestThreadOptions = z.infer<typeof CreateMergeRequestThreadSchema>;
 export type CreateMergeRequestNoteOptions = z.infer<typeof CreateMergeRequestNoteSchema>;
+
+export const ListMergeRequestsSchema = ProjectParamsSchema.extend({
+  state: z
+    .enum(["opened", "closed", "locked", "merged", "all"])
+    .optional()
+    .describe("Return merge requests with a specific state"),
+  order_by: z
+    .enum(["created_at", "updated_at", "title"])
+    .optional()
+    .describe("Return merge requests ordered by specified field"),
+  sort: z
+    .enum(["asc", "desc"])
+    .optional()
+    .describe("Return merge requests sorted in ascending or descending order"),
+  milestone: z.string().optional().describe("Return merge requests for a specific milestone"),
+  view: z.enum(["simple", "detailed"]).optional().describe("Return simple or detailed merge requests"),
+  labels: z.array(z.string()).optional().describe("Return merge requests matching a list of labels"),
+  created_after: z.string().optional().describe("Return merge requests created after the given time"),
+  created_before: z.string().optional().describe("Return merge requests created before the given time"),
+  updated_after: z.string().optional().describe("Return merge requests updated after the given time"),
+  updated_before: z.string().optional().describe("Return merge requests updated before the given time"),
+  scope: z
+    .enum(["created_by_me", "assigned_to_me", "all"])
+    .optional()
+    .describe("Return merge requests for the given scope"),
+  author_id: z.number().optional().describe("Return merge requests created by the given user id"),
+  author_username: z.string().optional().describe("Return merge requests created by the given username"),
+  assignee_id: z.number().optional().describe("Return merge requests assigned to the given user id"),
+  approver_ids: z.array(z.number()).optional().describe("Return merge requests which have specified the users as approvers"),
+  approved_by_ids: z.array(z.number()).optional().describe("Return merge requests which have been approved by all the users"),
+  reviewer_id: z.number().optional().describe("Return merge requests which have been assigned to a specific reviewer"),
+  reviewer_username: z.string().optional().describe("Return merge requests which have been assigned to a specific reviewer by username"),
+  my_reaction_emoji: z.string().optional().describe("Return merge requests reacted by the authenticated user by the given emoji"),
+  source_branch: z.string().optional().describe("Return merge requests with the given source branch"),
+  target_branch: z.string().optional().describe("Return merge requests with the given target branch"),
+  search: z.string().optional().describe("Search merge requests against their title and description"),
+  per_page: z.number().optional().describe("Number of items per page"),
+  page: z.number().optional().describe("Page number"),
+});
